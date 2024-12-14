@@ -76,14 +76,29 @@ function Read-Package-Dependencies {
     $file=$args[0]
     $json = Get-Content $file | ConvertFrom-Json 
 
-    $json.dependencies.psobject.properties | ForEach-Object {
+    $table1=$json.dependencies.psobject.properties | ForEach-Object {
         [PSCustomObject]@{
             'Name' = $_.name
             'Version'    = $_.value
             'Path'=$file
+            'dev'= 0
         }
     }
 
+    $table2=$json.devDependencies.psobject.properties | ForEach-Object {
+        [PSCustomObject]@{
+            'Name' = $_.name
+            'Version'    = $_.value
+            'Path'=$file
+            'dev'= 1
+        }
+    }
+
+    $CombinedTable = @()
+    $CombinedTable += $table1
+    $CombinedTable += $table2
+
+    return $CombinedTable
 }
 
 function Read-Package-DevDependencies {
