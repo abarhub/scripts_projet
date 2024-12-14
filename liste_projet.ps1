@@ -15,5 +15,28 @@ function Get-ListProjet {
     }
 }
 
+function Add-Numbers {
+  $args[0] + $args[1]
+}
 
+
+function Read-Version {
+    $file=$args[0]
+    [xml]$xml = Get-Content $file
+
+    $xml.project | ForEach-Object {
+        [PSCustomObject]@{
+            'GroupId' = $_.groupId
+            'ArtifactId'    = $_.artifactId
+            'Version'    = $_.version
+            'GroupIdParent' = $_.parent.groupId
+            'ArtifactIdParent'    = $_.parent.artifactId
+            'VersionParent'    = $_.parent.version
+            'Name'=$_.name
+            'Description'=$_.description
+            'JavaVersion'=$_.properties.'java.version'
+        }
+    }
+
+}
 
