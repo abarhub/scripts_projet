@@ -20,7 +20,7 @@ function Add-Numbers {
 }
 
 
-function Read-Version {
+function Read-Pom {
     $file=$args[0]
     [xml]$xml = Get-Content $file
 
@@ -35,6 +35,66 @@ function Read-Version {
             'Name'=$_.name
             'Description'=$_.description
             'JavaVersion'=$_.properties.'java.version'
+            'Path'=$file
+        }
+    }
+
+}
+
+function Read-Pom-Dependencies {
+    $file=$args[0]
+    [xml]$xml = Get-Content $file
+
+    $xml.project.dependencies.dependency | ForEach-Object {
+        [PSCustomObject]@{
+            'GroupId' = $_.groupId
+            'ArtifactId'    = $_.artifactId
+            'Version'    = $_.version
+            'Scope' = $_.scope
+            'Path'=$file
+        }
+
+    }
+}
+
+
+function Read-Package {
+    $file=$args[0]
+    $json = Get-Content $file | ConvertFrom-Json 
+
+    $json | ForEach-Object {
+        [PSCustomObject]@{
+            'Name' = $_.name
+            'Version'    = $_.version
+            'Path'=$file
+        }
+    }
+
+}
+
+function Read-Package-Dependencies {
+    $file=$args[0]
+    $json = Get-Content $file | ConvertFrom-Json 
+
+    $json.dependencies.psobject.properties | ForEach-Object {
+        [PSCustomObject]@{
+            'Name' = $_.name
+            'Version'    = $_.value
+            'Path'=$file
+        }
+    }
+
+}
+
+function Read-Package-DevDependencies {
+    $file=$args[0]
+    $json = Get-Content $file | ConvertFrom-Json 
+
+    $json.devDependencies.psobject.properties | ForEach-Object {
+        [PSCustomObject]@{
+            'Name' = $_.name
+            'Version'    = $_.value
+            'Path'=$file
         }
     }
 
