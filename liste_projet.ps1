@@ -166,5 +166,71 @@ function Get-GitBranchInfo {
 }
 
 
+function Explore-Arborescence {
+    param (
+        [string]$Path,
+        [ref]$Results, # Référence à la liste pour accumuler les résultats
+        [bool]$ArretPremierTrouve = 1,
+        [string]$NomProjet=""
+    )
 
+    # Vérifie si 'pom.xml' ou 'package.json' existe dans le répertoire courant
+    $PomFile = Join-Path $Path "pom.xml"
+    $PackageFile = Join-Path $Path "package.json"
+
+    if (Test-Path -Path $PomFile -PathType Leaf -ErrorAction SilentlyContinue) {
+        if ([string]::IsNullOrEmpty($NomProjet)){
+            $NomProjet = Split-Path -Path $Path -Leaf
+        }
+        $Results.Value += [PSCustomObject]@{
+            FullPath= $PomFile
+            FileName = "pom.xml"
+            Type = 'maven'
+            Dir = $Path
+            NomProjet=$NomProjet
+        }
+        #Write-Output "Fichier trouvé : $PomFile"
+        if ($ArretPremierTrouve){
+            return
+        }
+    }
+    if (Test-Path -Path $PackageFile -PathType Leaf -ErrorAction SilentlyContinue) {
+        if ([string]::IsNullOrEmpty($NomProjet)){
+            $NomProjet = Split-Path -Path $Path -Leaf
+        }
+        $Results.Value += [PSCustomObject]@{
+            FullPath= $PackageFile
+            FileName = "package.json"
+            Type = 'node'
+            Dir = $Path
+            NomProjet=$NomProjet
+        }
+        #Write-Output "Fichier trouvé : $PackageFile"
+        if ($ArretPremierTrouve) {
+            return
+        }
+    }
+
+    # Récupère les sous-répertoires en excluant 'target' et 'node_modules'
+    $SubDirectories = Get-ChildItem -Path $Path -Directory -Exclude "target", "node_modules","node",".venv",".venv2","venv" -ErrorAction SilentlyContinue
+
+    foreach ($SubDir in $SubDirectories) {
+        # Appel récursif pour explorer les sous-répertoires
+        Explore-Arborescence -Path $SubDir.FullName -Results $Results -ArretPremierTrouve $ArretPremierTrouve -NomProjet $NomProjet
+    }
+}
+
+function Get-Projets {
+    param (
+        [string]$RootPath,
+        [bool]$ArretPremierTrouve = 1        
+    )
+
+    $FoundFiles = @() # Liste pour stocker les résultats
+    $RefResults = [ref]$FoundFiles
+
+    Explore-Arborescence -Path $RootPath -Results $RefResults -ArretPremierTrouve $ArretPremierTrouve
+
+    $FoundFiles
+}
 
