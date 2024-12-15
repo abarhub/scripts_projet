@@ -398,3 +398,13 @@ function Get-Package {
     }
 }
 
+function Get-Git {
+    param (
+        [Parameter(ValueFromPipeline)]  # Permet de recevoir les données du pipeline
+        $InputItem        
+    )
+    process {
+        Get-GitBranchInfo $InputItem.Dir
+    }
+
+}
