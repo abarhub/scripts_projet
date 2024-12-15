@@ -343,13 +343,35 @@ function Get-Pom {
     param (
         [Parameter(ValueFromPipeline)]  # Permet de recevoir les données du pipeline
         $InputItem,
-        [bool]$Dependances = $false
+        [bool]$Dependances = $false,
+        [bool]$EffectivePom = $false
     )
     process {
-        [xml]$xml = Get-Content $InputItem.FullPath
+        $path=$InputItem.FullPath
+        $pathXml=$path
+        $TempFile=""
+        if ($EffectivePom) {
+            #Write-Host "creation du fichier temp ..."
+            $TempFile = New-TemporaryFile
+            #Write-Host "temp=$TempFile"
+            mvn -f "$path" help:effective-pom -Doutput="$TempFile" > $null 2>&1
+            $pathXml=$TempFile.FullName
+            #$pathXml=$pathXml+".xml"
+            #Rename-Item -Path $TempFile.FullName -NewName $pathXml
+            #Write-Host "pathXml=$pathXml"
+        }
+        [xml]$xml = Get-Content $pathXml
+        if (![string]::IsNullOrEmpty($TempFile)){
+            Remove-Item -Path $pathXml
+        }
 
         if ($Dependances) {
-            $xml.project.dependencies.dependency | ForEach-Object {
+            if ($EffectivePom) {
+                $contenuXml=$xml.projects.project.dependencies.dependency
+            } else {
+                $contenuXml=$xml.project.dependencies.dependency
+            }
+            $contenuXml | ForEach-Object {
                 [PSCustomObject]@{
                     'GroupId' = $_.groupId
                     'ArtifactId'    = $_.artifactId
@@ -360,7 +382,12 @@ function Get-Pom {
 
             }
         } else {
-            $xml.project | ForEach-Object {
+            if ($EffectivePom) {
+                $contenuXml=$xml.projects.project
+            } else {
+                $contenuXml=$xml.project
+            }
+            $contenuXml | ForEach-Object {
                 [PSCustomObject]@{
                     'GroupId' = $_.groupId
                     'ArtifactId'    = $_.artifactId
