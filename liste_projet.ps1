@@ -306,3 +306,29 @@ function Get-Config {
 
     return Lire-Fichier "~\Documents\config_projets.properties"
 }
+
+function Get-Pom {
+    param (
+        [Parameter(ValueFromPipeline)]  # Permet de recevoir les données du pipeline
+        $InputItem
+    )
+    process {
+        [xml]$xml = Get-Content $InputItem.FullPath
+
+        $xml.project | ForEach-Object {
+            [PSCustomObject]@{
+                'GroupId' = $_.groupId
+                'ArtifactId'    = $_.artifactId
+                'Version'    = $_.version
+                'GroupIdParent' = $_.parent.groupId
+                'ArtifactIdParent'    = $_.parent.artifactId
+                'VersionParent'    = $_.parent.version
+                'Name'=$_.name
+                'Description'=$_.description
+                'JavaVersion'=$_.properties.'java.version'
+                'Path'=$InputItem.FullPath
+            }
+        }
+    }
+}
+
