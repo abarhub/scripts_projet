@@ -171,7 +171,8 @@ function Explore-Arborescence {
         [string]$Path,
         [ref]$Results, # Référence à la liste pour accumuler les résultats
         [bool]$ArretPremierTrouve = 1,
-        [string]$NomProjet=""
+        [string]$NomProjet="",
+        [string[]]$Exclusion=@()
     )
 
     # Vérifie si 'pom.xml' ou 'package.json' existe dans le répertoire courant
@@ -212,25 +213,96 @@ function Explore-Arborescence {
     }
 
     # Récupère les sous-répertoires en excluant 'target' et 'node_modules'
-    $SubDirectories = Get-ChildItem -Path $Path -Directory -Exclude "target", "node_modules","node",".venv",".venv2","venv" -ErrorAction SilentlyContinue
+    $SubDirectories = Get-ChildItem -Path $Path -Directory -Exclude $Exclusion -ErrorAction SilentlyContinue
 
     foreach ($SubDir in $SubDirectories) {
         # Appel récursif pour explorer les sous-répertoires
-        Explore-Arborescence -Path $SubDir.FullName -Results $Results -ArretPremierTrouve $ArretPremierTrouve -NomProjet $NomProjet
+        Explore-Arborescence -Path $SubDir.FullName -Results $Results -ArretPremierTrouve $ArretPremierTrouve -NomProjet $NomProjet -Exclusion $Exclusion
     }
 }
 
 function Get-Projets {
     param (
-        [string]$RootPath,
-        [bool]$ArretPremierTrouve = 1        
+        [string]$RootPath="",
+        [bool]$ArretPremierTrouve = 1,   
+        [string[]]$Exclusion=@()     
     )
 
     $FoundFiles = @() # Liste pour stocker les résultats
     $RefResults = [ref]$FoundFiles
 
-    Explore-Arborescence -Path $RootPath -Results $RefResults -ArretPremierTrouve $ArretPremierTrouve
+    $config=Get-Config
+    $rep=$config["repertoire"]
+    $excl=$config["exclusion"]
+    Write-Output "rep : $rep"
+    Write-Output "excl : $excl"
+    if ([string]::IsNullOrEmpty($RootPath)){
+        if (![string]::IsNullOrEmpty($rep)){
+            $RootPath=$rep
+        }
+    }
+    if ($Exclusion.Length -eq 0){
+        if ($excl.Length -ne 0){
+            $Exclusion=$excl
+        } else {
+            $Exclusion=@("target", "node_modules","node",".venv",".venv2","venv")
+        }
+    }
+
+    Write-Output "RootPath : $RootPath"
+    Write-Output "Exclusion : $Exclusion"
+
+    Explore-Arborescence -Path $RootPath -Results $RefResults -ArretPremierTrouve $ArretPremierTrouve -Exclusion $Exclusion
 
     $FoundFiles
 }
 
+function Lire-Fichier {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CheminFichier
+    )
+
+    # Vérifie si le fichier existe
+    if (-not (Test-Path -Path $CheminFichier)) {
+        throw "Le fichier '$CheminFichier' n'existe pas."
+    }
+
+    # Lit le fichier ligne par ligne
+    $contenu = Get-Content -Path $CheminFichier
+
+    # Initialise un dictionnaire pour stocker les clés/valeurs
+    $resultat = @{}
+
+    foreach ($ligne in $contenu) {
+        if ($ligne -match "^(?<cle>\w+)\=(?<valeur>.+)$") {
+            $cle = $matches['cle']
+            $valeur = $matches['valeur']
+
+            if ($cle -eq "exclusion") {
+                # Convertit la valeur de "exclusion" en tableau
+                $resultat[$cle] = $valeur -split ","
+            } else {
+                # Stocke la valeur normalement
+                $resultat[$cle] = $valeur
+            }
+        }
+    }
+
+    # Vérifie si les clés obligatoires sont présentes
+    if (-not $resultat.ContainsKey("repertoire")) {
+        throw "La clé 'repertoire' est manquante dans le fichier."
+    }
+
+    if (-not $resultat.ContainsKey("exclusion")) {
+        throw "La clé 'exclusion' est manquante dans le fichier."
+    }
+
+    # Retourne l'objet contenant les résultats
+    return $resultat
+}
+
+function Get-Config {
+
+    return Lire-Fichier "~\Documents\config_projets.properties"
+}
