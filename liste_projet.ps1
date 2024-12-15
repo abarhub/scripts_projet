@@ -1,3 +1,26 @@
+
+#
+# liste des infos du pom d'un projet :
+# Get-Projets "C:\projet\mon_projet" | Where-Object -Property Type -eq 'maven' | Get-Pom
+#
+# liste des infos du pom d'un projet avec les sous projets :
+# Get-Projets "C:\projet\mon_projet" -ArretPremierTrouve 0 | Where-Object -Property Type -eq 'maven' | Get-Pom
+#
+# liste des dépendances d'un projet :
+# Get-Projets "C:\projet\mon_projet" -ArretPremierTrouve 0 | Where-Object -Property Type -eq 'node' | Get-Package -Dependances 1
+# 
+# liste des infos du package.json :
+# Get-Projets "C:\projet\mon_projet" -ArretPremierTrouve 0 | Where-Object -Property Type -eq 'node' | Get-Package 
+# 
+# liste des dependences du package.json :
+# Get-Projets "C:\projet\mon_projet" -ArretPremierTrouve 0 | Where-Object -Property Type -eq 'node' | Get-Package -Dependances 1
+# 
+# liste des infos git :
+# Get-Projets "C:\projet\mon_projet" | Where-Object -Property Git -eq 1 | Get-Git
+#
+#
+
+
 function Get-ListProjet {
     [CmdletBinding()]
     param(
@@ -153,6 +176,7 @@ function Get-GitBranchInfo {
             CommitMessage     = $commitMessage
             HasModifications  = $hasModifications
             IsUpToDate        = $isUpToDate
+            Dir = $RepositoryPath
         }
 
         return $branchInfo
@@ -178,6 +202,12 @@ function Explore-Arborescence {
     # Vérifie si 'pom.xml' ou 'package.json' existe dans le répertoire courant
     $PomFile = Join-Path $Path "pom.xml"
     $PackageFile = Join-Path $Path "package.json"
+    $gitDir=Join-Path $Path ".git"
+
+    $estGit=$false
+    if (Test-Path -Path $gitDir -PathType Container -ErrorAction SilentlyContinue) {
+        $estGit=$true
+    }
 
     if (Test-Path -Path $PomFile -PathType Leaf -ErrorAction SilentlyContinue) {
         if ([string]::IsNullOrEmpty($NomProjet)){
@@ -189,6 +219,7 @@ function Explore-Arborescence {
             Type = 'maven'
             Dir = $Path
             NomProjet=$NomProjet
+            Git = $estGit
         }
         #Write-Output "Fichier trouvé : $PomFile"
         if ($ArretPremierTrouve){
@@ -205,6 +236,7 @@ function Explore-Arborescence {
             Type = 'node'
             Dir = $Path
             NomProjet=$NomProjet
+            Git = $estGit
         }
         #Write-Output "Fichier trouvé : $PackageFile"
         if ($ArretPremierTrouve) {
