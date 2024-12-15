@@ -349,3 +349,52 @@ function Get-Pom {
     }
 }
 
+
+function Get-Package {
+    param (
+        [Parameter(ValueFromPipeline)]  # Permet de recevoir les données du pipeline
+        $InputItem,
+        [bool]$Dependances = $false
+    )
+    process {
+        $json = Get-Content $InputItem.FullPath | ConvertFrom-Json 
+
+        if ($Dependances) {
+
+            $table1=$json.dependencies.psobject.properties | ForEach-Object {
+                [PSCustomObject]@{
+                    'Name' = $_.name
+                    'Version'    = $_.value
+                    'Path'=$InputItem.FullPath
+                    'dev'= 0
+                }
+            }
+
+            $table2=$json.devDependencies.psobject.properties | ForEach-Object {
+                [PSCustomObject]@{
+                    'Name' = $_.name
+                    'Version'    = $_.value
+                    'Path'=$InputItem.FullPath
+                    'dev'= 1
+                }
+            }
+
+            $CombinedTable = @()
+            $CombinedTable += $table1
+            $CombinedTable += $table2
+
+            return $CombinedTable
+
+        } else {
+            $json | ForEach-Object {
+                [PSCustomObject]@{
+                    'Name' = $_.name
+                    'Version'    = $_.version
+                    'Path'=$InputItem.FullPath
+                }
+            }
+
+        }
+    }
+}
+
