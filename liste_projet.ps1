@@ -170,7 +170,7 @@ function Explore-Arborescence {
     param (
         [string]$Path,
         [ref]$Results, # Référence à la liste pour accumuler les résultats
-        [bool]$ArretPremierTrouve = 1,
+        [bool]$ArretPremierTrouve = $true,
         [string]$NomProjet="",
         [string[]]$Exclusion=@()
     )
@@ -224,7 +224,7 @@ function Explore-Arborescence {
 function Get-Projets {
     param (
         [string]$RootPath="",
-        [bool]$ArretPremierTrouve = 1,   
+        [bool]$ArretPremierTrouve = $true,   
         [string[]]$Exclusion=@()     
     )
 
@@ -234,8 +234,8 @@ function Get-Projets {
     $config=Get-Config
     $rep=$config["repertoire"]
     $excl=$config["exclusion"]
-    Write-Output "rep : $rep"
-    Write-Output "excl : $excl"
+    #Write-Output "rep : $rep"
+    #Write-Output "excl : $excl"
     if ([string]::IsNullOrEmpty($RootPath)){
         if (![string]::IsNullOrEmpty($rep)){
             $RootPath=$rep
@@ -249,8 +249,8 @@ function Get-Projets {
         }
     }
 
-    Write-Output "RootPath : $RootPath"
-    Write-Output "Exclusion : $Exclusion"
+    #Write-Output "RootPath : $RootPath"
+    #Write-Output "Exclusion : $Exclusion"
 
     Explore-Arborescence -Path $RootPath -Results $RefResults -ArretPremierTrouve $ArretPremierTrouve -Exclusion $Exclusion
 
@@ -310,25 +310,42 @@ function Get-Config {
 function Get-Pom {
     param (
         [Parameter(ValueFromPipeline)]  # Permet de recevoir les données du pipeline
-        $InputItem
+        $InputItem,
+        [bool]$Dependances = $false
     )
     process {
         [xml]$xml = Get-Content $InputItem.FullPath
 
-        $xml.project | ForEach-Object {
-            [PSCustomObject]@{
-                'GroupId' = $_.groupId
-                'ArtifactId'    = $_.artifactId
-                'Version'    = $_.version
-                'GroupIdParent' = $_.parent.groupId
-                'ArtifactIdParent'    = $_.parent.artifactId
-                'VersionParent'    = $_.parent.version
-                'Name'=$_.name
-                'Description'=$_.description
-                'JavaVersion'=$_.properties.'java.version'
-                'Path'=$InputItem.FullPath
+        if ($Dependances) {
+            $xml.project.dependencies.dependency | ForEach-Object {
+                [PSCustomObject]@{
+                    'GroupId' = $_.groupId
+                    'ArtifactId'    = $_.artifactId
+                    'Version'    = $_.version
+                    'Scope' = $_.scope
+                    'Path'=$InputItem.FullPath
+                }
+
+            }
+        } else {
+            $xml.project | ForEach-Object {
+                [PSCustomObject]@{
+                    'GroupId' = $_.groupId
+                    'ArtifactId'    = $_.artifactId
+                    'Version'    = $_.version
+                    'GroupIdParent' = $_.parent.groupId
+                    'ArtifactIdParent'    = $_.parent.artifactId
+                    'VersionParent'    = $_.parent.version
+                    'Name'=$_.name
+                    'Description'=$_.description
+                    'JavaVersion'=$_.properties.'java.version'
+                    'Path'=$InputItem.FullPath
+                }
             }
         }
+
+        
+    
     }
 }
 
